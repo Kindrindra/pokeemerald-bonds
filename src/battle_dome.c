@@ -2125,17 +2125,37 @@ static void InitDomeTrainers(void)
     Free(statValues);
 }
 
-#define CALC_STAT(base, statIndex)                                                          \
+#define CALC_STAT(base, statIndex, downStat)                                                          \
 {                                                                                           \
     u8 baseStat = gSpeciesInfo[fmon->species].base;                                                 \
     stats[statIndex] = (((2 * baseStat + ivs + evs[statIndex] / 4) * level) / 100) + 5;     \
-    stats[statIndex] = (u8) ModifyStatByNature(fmon->nature, stats[statIndex], statIndex);        \
+    stats[statIndex] = (u8) ModifyStatByNature(fmon->nature, stats[statIndex], statIndex, downStat);        \
 }
 
 static void CalcDomeMonStats(const struct TrainerMon *fmon, int level, u8 ivs, int *stats)
 {
     int evs[NUM_STATS];
     int i;
+    s32 downBase = 0;
+
+    switch(gNaturesInfo[fmon->nature].statDown)
+    {
+    case STAT_ATK:
+        downBase = gSpeciesInfo[fmon->species].baseAttack;
+        break;
+    case STAT_DEF:
+        downBase = gSpeciesInfo[fmon->species].baseDefense;
+        break;
+    case STAT_SPATK:
+        downBase = gSpeciesInfo[fmon->species].baseSpAttack;
+        break;
+    case STAT_SPDEF:
+        downBase = gSpeciesInfo[fmon->species].baseSpDefense;
+        break;
+    case STAT_SPEED:
+        downBase = gSpeciesInfo[fmon->species].baseSpeed;
+        break;
+    }
 
     for (i = 0; i < NUM_STATS; i++)
     {
@@ -2155,11 +2175,11 @@ static void CalcDomeMonStats(const struct TrainerMon *fmon, int level, u8 ivs, i
         stats[STAT_HP] = (((n + ivs + evs[STAT_HP] / 4) * level) / 100) + level + 10;
     }
 
-    CALC_STAT(baseAttack, STAT_ATK);
-    CALC_STAT(baseDefense, STAT_DEF);
-    CALC_STAT(baseSpeed, STAT_SPEED);
-    CALC_STAT(baseSpAttack, STAT_SPATK);
-    CALC_STAT(baseSpDefense, STAT_SPDEF);
+    CALC_STAT(baseAttack, STAT_ATK, downBase);
+    CALC_STAT(baseDefense, STAT_DEF, downBase);
+    CALC_STAT(baseSpeed, STAT_SPEED, downBase);
+    CALC_STAT(baseSpAttack, STAT_SPATK, downBase);
+    CALC_STAT(baseSpDefense, STAT_SPDEF, downBase);
 }
 
 static void SwapDomeTrainers(int id1, int id2, u16 *statsArray)
