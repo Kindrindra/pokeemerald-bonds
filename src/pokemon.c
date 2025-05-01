@@ -1748,39 +1748,15 @@ static u16 CalculateBoxMonChecksum(struct BoxPokemon *boxMon)
     return checksum;
 }
 
-#define CALC_STAT(base, iv, ev, statIndex, field)               \
+//original formula: s32 n = (((2 * baseStat + iv + ev / 4) * level) / 100) + 5;
+#define CALC_STAT(base, downBase, ev, statIndex, field)               \
 {                                                               \
     u8 baseStat = gSpeciesInfo[species].base;                   \
-    s32 n = (((2 * baseStat + iv + ev / 4) * level) / 100) + 5; \
-    n = ModifyStatByNature(nature, n, statIndex);               \
+    s32 n = (((2 * baseStat + ev / 4) * level) / 100) + 5; \
+    n = ModifyStatByNature(nature, n, statIndex, downBase);               \
     if (B_FRIENDSHIP_BOOST == TRUE)                             \
         n = n + ((n * 10 * friendship) / (MAX_FRIENDSHIP * 100));\
     SetMonData(mon, field, &n);                                 \
-}
-
-u8 StatIndexToBaseStat(stat_type)
-{
-    u8 baseStat;
-
-    switch(stat_type)
-    {
-    case STAT_ATK:
-        baseStat = gSpeciesInfo[species].baseAttack;
-        break;
-    case STAT_DEF:
-        baseStat = gSpeciesInfo[species].baseDefense;
-        break;
-    case STAT_SPATK:
-        baseStat = gSpeciesInfo[species].baseSpAttack;
-        break;
-    case STAT_SPDEF:
-        baseStat = gSpeciesInfo[species].baseSpDefense;
-        break;
-    case STAT_SPEED:
-        baseStat = gSpeciesInfo[species].baseSpeed;
-    }
-
-    return baseStat;
 }
 
 void CalculateMonStats(struct Pokemon *mon)
@@ -1805,6 +1781,26 @@ void CalculateMonStats(struct Pokemon *mon)
     s32 newMaxHP;
 
     u8 nature = GetMonData(mon, MON_DATA_HIDDEN_NATURE, NULL);
+    s32 downBase;
+
+    switch(gNaturesInfo[nature].downStat)
+    {
+    case STAT_ATK:
+        downBase = gSpeciesInfo[species].baseAttack;
+        break;
+    case STAT_DEF:
+        downBase = gSpeciesInfo[species].baseDefense;
+        break;
+    case STAT_SPATK:
+        downBase = gSpeciesInfo[species].baseSpAttack;
+        break;
+    case STAT_SPDEF:
+        downBase = gSpeciesInfo[species].baseSpDefense;
+        break;
+    case STAT_SPEED:
+        downBase = gSpeciesInfo[species].baseSpeed;
+        break;
+    }
 
     SetMonData(mon, MON_DATA_LEVEL, &level);
 
@@ -1824,11 +1820,11 @@ void CalculateMonStats(struct Pokemon *mon)
 
     SetMonData(mon, MON_DATA_MAX_HP, &newMaxHP);
 
-    CALC_STAT(baseAttack, attackIV, attackEV, STAT_ATK, MON_DATA_ATK)
-    CALC_STAT(baseDefense, defenseIV, defenseEV, STAT_DEF, MON_DATA_DEF)
-    CALC_STAT(baseSpeed, speedIV, speedEV, STAT_SPEED, MON_DATA_SPEED)
-    CALC_STAT(baseSpAttack, spAttackIV, spAttackEV, STAT_SPATK, MON_DATA_SPATK)
-    CALC_STAT(baseSpDefense, spDefenseIV, spDefenseEV, STAT_SPDEF, MON_DATA_SPDEF)
+    CALC_STAT(baseAttack, downBase, attackEV, STAT_ATK, MON_DATA_ATK)
+    CALC_STAT(baseDefense, downBase, defenseEV, STAT_DEF, MON_DATA_DEF)
+    CALC_STAT(baseSpeed, downBase, speedEV, STAT_SPEED, MON_DATA_SPEED)
+    CALC_STAT(baseSpAttack, downBase, spAttackEV, STAT_SPATK, MON_DATA_SPATK)
+    CALC_STAT(baseSpDefense, downBase, spDefenseEV, STAT_SPDEF, MON_DATA_SPDEF)
 
     // Since a pokemon's maxHP data could either not have
     // been initialized at this point or this pokemon is
@@ -5186,17 +5182,17 @@ u8 GetTrainerEncounterMusicId(u16 trainerOpponentId)
         return gTrainers[difficulty][sanitizedTrainerId].encounterMusic_gender & (F_TRAINER_FEMALE - 1);
 }
 
-u16 ModifyStatByNature(u8 nature, u16 stat, u8 statIndex)
+u16 ModifyStatByNature(u8 nature, u16 stat, u8 statIndex, u16 downStat)
 {
     // Don't modify HP, Accuracy, or Evasion by nature
     if (statIndex <= STAT_HP || statIndex > NUM_NATURE_STATS || gNaturesInfo[nature].statUp == gNaturesInfo[nature].statDown)
         return stat;
     else if (statIndex == gNaturesInfo[nature].statUp)
-        // Find decreased stat
-        u16 downStat = StatIndexToBaseStat(gNaturesInfo[nature].statDown);
+    {
         // Increase scales as the reduced stat improves and increased stat reduces
         return 2 * downStat *  100 * 20 / stat / 100 + stat;
         //return stat * 110 / 100;
+    }
     else if (statIndex == gNaturesInfo[nature].statDown)
         return stat * 80 / 100;
     else
