@@ -1758,6 +1758,31 @@ static u16 CalculateBoxMonChecksum(struct BoxPokemon *boxMon)
     SetMonData(mon, field, &n);                                 \
 }
 
+u8 StatIndexToBaseStat(stat_type)
+{
+    u8 baseStat;
+
+    switch(stat_type)
+    {
+    case STAT_ATK:
+        baseStat = gSpeciesInfo[species].baseAttack;
+        break;
+    case STAT_DEF:
+        baseStat = gSpeciesInfo[species].baseDefense;
+        break;
+    case STAT_SPATK:
+        baseStat = gSpeciesInfo[species].baseSpAttack;
+        break;
+    case STAT_SPDEF:
+        baseStat = gSpeciesInfo[species].baseSpDefense;
+        break;
+    case STAT_SPEED:
+        baseStat = gSpeciesInfo[species].baseSpeed;
+    }
+
+    return baseStat;
+}
+
 void CalculateMonStats(struct Pokemon *mon)
 {
     s32 oldMaxHP = GetMonData(mon, MON_DATA_MAX_HP, NULL);
@@ -5167,9 +5192,13 @@ u16 ModifyStatByNature(u8 nature, u16 stat, u8 statIndex)
     if (statIndex <= STAT_HP || statIndex > NUM_NATURE_STATS || gNaturesInfo[nature].statUp == gNaturesInfo[nature].statDown)
         return stat;
     else if (statIndex == gNaturesInfo[nature].statUp)
-        return stat * 110 / 100;
+        // Find decreased stat
+        u16 downStat = StatIndexToBaseStat(gNaturesInfo[nature].statDown);
+        // Increase scales as the reduced stat improves and increased stat reduces
+        return 2 * downStat *  100 * 20 / stat / 100 + stat;
+        //return stat * 110 / 100;
     else if (statIndex == gNaturesInfo[nature].statDown)
-        return stat * 90 / 100;
+        return stat * 80 / 100;
     else
         return stat;
 }
